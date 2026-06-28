@@ -1,0 +1,412 @@
+<?xml version="1.0"?>
+<robot name="x3_drone" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ════════════════════════════════════════════════════════════════
+       BASE LINK  (unchanged from original)
+  ════════════════════════════════════════════════════════════════════ -->
+  <link name="base_link">
+    <inertial>
+      <mass value="1.5"/>
+      <inertia ixx="0.029" ixy="0" ixz="0"
+               iyy="0.029" iyz="0"
+               izz="0.055"/>
+    </inertial>
+    <visual>
+      <geometry><box size="0.47 0.47 0.11"/></geometry>
+      <material name="dark_grey"><color rgba="0.2 0.2 0.2 1.0"/></material>
+    </visual>
+    <collision>
+      <geometry><box size="0.47 0.47 0.11"/></geometry>
+    </collision>
+  </link>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       FIX 1 — ROTOR LINKS + JOINTS
+       X3 quadrotor layout (top view, Z-up, X-forward):
+         rotor_0  front-left   (+x +y)  CCW
+         rotor_1  back-right   (-x -y)  CCW
+         rotor_2  front-right  (+x -y)  CW
+         rotor_3  back-left    (-x +y)  CW
+       Arm length ~0.235 m (half of 0.47 m body diagonal)
+  ════════════════════════════════════════════════════════════════════ -->
+
+  <!-- rotor_0 : front-left CCW -->
+  <link name="rotor_0">
+    <inertial>
+      <mass value="0.005"/>
+      <inertia ixx="9.75e-7" ixy="0" ixz="0"
+               iyy="0.000166704" iyz="0"
+               izz="0.000167604"/>
+    </inertial>
+    <visual>
+      <geometry><cylinder radius="0.1" length="0.005"/></geometry>
+      <material name="blue_rotor"><color rgba="0.0 0.0 1.0 0.8"/></material>
+    </visual>
+    <collision>
+      <geometry><cylinder radius="0.1" length="0.005"/></geometry>
+    </collision>
+  </link>
+  <joint name="rotor_0_joint" type="revolute">
+    <parent link="base_link"/>
+    <child  link="rotor_0"/>
+    <origin xyz=" 0.17  0.17 0.023" rpy="0 0 0"/>
+    <axis   xyz="0 0 1"/>
+    <limit  lower="-1e+16" upper="1e+16" effort="10" velocity="2100"/>
+    <dynamics damping="0.004" friction="0"/>
+  </joint>
+
+  <!-- rotor_1 : back-right CCW -->
+  <link name="rotor_1">
+    <inertial>
+      <mass value="0.005"/>
+      <inertia ixx="9.75e-7" ixy="0" ixz="0"
+               iyy="0.000166704" iyz="0"
+               izz="0.000167604"/>
+    </inertial>
+    <visual>
+      <geometry><cylinder radius="0.1" length="0.005"/></geometry>
+      <material name="blue_rotor"><color rgba="0.0 0.0 1.0 0.8"/></material>
+    </visual>
+    <collision>
+      <geometry><cylinder radius="0.1" length="0.005"/></geometry>
+    </collision>
+  </link>
+  <joint name="rotor_1_joint" type="revolute">
+    <parent link="base_link"/>
+    <child  link="rotor_1"/>
+    <origin xyz="-0.17 -0.17 0.023" rpy="0 0 0"/>
+    <axis   xyz="0 0 1"/>
+    <limit  lower="-1e+16" upper="1e+16" effort="10" velocity="2100"/>
+    <dynamics damping="0.004" friction="0"/>
+  </joint>
+
+  <!-- rotor_2 : front-right CW -->
+  <link name="rotor_2">
+    <inertial>
+      <mass value="0.005"/>
+      <inertia ixx="9.75e-7" ixy="0" ixz="0"
+               iyy="0.000166704" iyz="0"
+               izz="0.000167604"/>
+    </inertial>
+    <visual>
+      <geometry><cylinder radius="0.1" length="0.005"/></geometry>
+      <material name="red_rotor"><color rgba="1.0 0.0 0.0 0.8"/></material>
+    </visual>
+    <collision>
+      <geometry><cylinder radius="0.1" length="0.005"/></geometry>
+    </collision>
+  </link>
+  <joint name="rotor_2_joint" type="revolute">
+    <parent link="base_link"/>
+    <child  link="rotor_2"/>
+    <origin xyz=" 0.17 -0.17 0.023" rpy="0 0 0"/>
+    <axis   xyz="0 0 1"/>
+    <limit  lower="-1e+16" upper="1e+16" effort="10" velocity="2100"/>
+    <dynamics damping="0.004" friction="0"/>
+  </joint>
+
+  <!-- rotor_3 : back-left CW -->
+  <link name="rotor_3">
+    <inertial>
+      <mass value="0.005"/>
+      <inertia ixx="9.75e-7" ixy="0" ixz="0"
+               iyy="0.000166704" iyz="0"
+               izz="0.000167604"/>
+    </inertial>
+    <visual>
+      <geometry><cylinder radius="0.1" length="0.005"/></geometry>
+      <material name="red_rotor"><color rgba="1.0 0.0 0.0 0.8"/></material>
+    </visual>
+    <collision>
+      <geometry><cylinder radius="0.1" length="0.005"/></geometry>
+    </collision>
+  </link>
+  <joint name="rotor_3_joint" type="revolute">
+    <parent link="base_link"/>
+    <child  link="rotor_3"/>
+    <origin xyz="-0.17  0.17 0.023" rpy="0 0 0"/>
+    <axis   xyz="0 0 1"/>
+    <limit  lower="-1e+16" upper="1e+16" effort="10" velocity="2100"/>
+    <dynamics damping="0.004" friction="0"/>
+  </joint>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       CAMERA LINK  (unchanged from original)
+  ════════════════════════════════════════════════════════════════════ -->
+  <link name="camera_link">
+    <inertial>
+      <mass value="0.05"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0"
+               iyy="0.0001" iyz="0"
+               izz="0.0001"/>
+    </inertial>
+    <visual>
+      <geometry><box size="0.05 0.05 0.05"/></geometry>
+      <material name="red"><color rgba="1.0 0.0 0.0 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="camera_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="camera_link"/>
+    <origin xyz="0.1 0 -0.05" rpy="0 0.7854 0"/>
+  </joint>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       FIX 2 — ONE MulticopterMotorModel PLUGIN PER ROTOR
+       Required params for Gazebo Harmonic (gz-sim 8):
+         motorNumber        — index, must match rotor_N numbering
+         jointName          — the revolute joint driving this rotor
+         linkName           — the rotor link
+         turningDirection   — ccw | cw
+         rotorDragCoefficient — blade drag (Nm / (rad/s)^2)
+         rollingMomentCoefficient
+         maxRotVelocity     — rad/s ceiling
+         motorConstant      — thrust = k * omega^2  (N / (rad/s)^2)
+         momentConstant     — torque = c * thrust
+  ════════════════════════════════════════════════════════════════════ -->
+  <gazebo>
+
+    <!-- Motor 0 — front-left CCW -->
+    <plugin filename="gz-sim-multicopter-motor-model-system"
+            name="gz::sim::systems::MulticopterMotorModel">
+      <robotNamespace>x3</robotNamespace>
+      <jointName>rotor_0_joint</jointName>
+      <linkName>rotor_0</linkName>
+      <turningDirection>ccw</turningDirection>
+      <timeConstantUp>0.0125</timeConstantUp>
+      <timeConstantDown>0.025</timeConstantDown>
+      <maxRotVelocity>800.0</maxRotVelocity>
+      <motorConstant>8.54858e-06</motorConstant>
+      <momentConstant>0.016</momentConstant>
+      <commandSubTopic>command/motor_speed</commandSubTopic>
+      <actuator_number>0</actuator_number>
+      <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+      <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+      <motorSpeedPubTopic>motor_speed/0</motorSpeedPubTopic>
+      <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+    </plugin>
+
+    <!-- Motor 1 — back-right CCW -->
+    <plugin filename="gz-sim-multicopter-motor-model-system"
+            name="gz::sim::systems::MulticopterMotorModel">
+      <robotNamespace>x3</robotNamespace>
+      <jointName>rotor_1_joint</jointName>
+      <linkName>rotor_1</linkName>
+      <turningDirection>ccw</turningDirection>
+      <timeConstantUp>0.0125</timeConstantUp>
+      <timeConstantDown>0.025</timeConstantDown>
+      <maxRotVelocity>800.0</maxRotVelocity>
+      <motorConstant>8.54858e-06</motorConstant>
+      <momentConstant>0.016</momentConstant>
+      <commandSubTopic>command/motor_speed</commandSubTopic>
+      <actuator_number>1</actuator_number>
+      <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+      <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+      <motorSpeedPubTopic>motor_speed/1</motorSpeedPubTopic>
+      <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+    </plugin>
+
+    <!-- Motor 2 — front-right CW -->
+    <plugin filename="gz-sim-multicopter-motor-model-system"
+            name="gz::sim::systems::MulticopterMotorModel">
+      <robotNamespace>x3</robotNamespace>
+      <jointName>rotor_2_joint</jointName>
+      <linkName>rotor_2</linkName>
+      <turningDirection>cw</turningDirection>
+      <timeConstantUp>0.0125</timeConstantUp>
+      <timeConstantDown>0.025</timeConstantDown>
+      <maxRotVelocity>800.0</maxRotVelocity>
+      <motorConstant>8.54858e-06</motorConstant>
+      <momentConstant>0.016</momentConstant>
+      <commandSubTopic>command/motor_speed</commandSubTopic>
+      <actuator_number>2</actuator_number>
+      <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+      <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+      <motorSpeedPubTopic>motor_speed/2</motorSpeedPubTopic>
+      <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+    </plugin>
+
+    <!-- Motor 3 — back-left CW -->
+    <plugin filename="gz-sim-multicopter-motor-model-system"
+            name="gz::sim::systems::MulticopterMotorModel">
+      <robotNamespace>x3</robotNamespace>
+      <jointName>rotor_3_joint</jointName>
+      <linkName>rotor_3</linkName>
+      <turningDirection>cw</turningDirection>
+      <timeConstantUp>0.0125</timeConstantUp>
+      <timeConstantDown>0.025</timeConstantDown>
+      <maxRotVelocity>800.0</maxRotVelocity>
+      <motorConstant>8.54858e-06</motorConstant>
+      <momentConstant>0.016</momentConstant>
+      <commandSubTopic>command/motor_speed</commandSubTopic>
+      <actuator_number>3</actuator_number>
+      <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+      <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+      <motorSpeedPubTopic>motor_speed/3</motorSpeedPubTopic>
+      <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+    </plugin>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         FIX 3 — MulticopterVelocityControl with rotorConfiguration
+         This is the plugin that exposes the cmd_vel interface.
+         The <rotorConfiguration> block is MANDATORY — without it the
+         plugin cannot build the mixer matrix and exits silently.
+         Topic is a raw Gazebo topic; bridge it to ROS 2 separately.
+    ══════════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════════
+     MulticopterVelocityControl — Gazebo Harmonic (gz-sim 8) correct syntax
+     Source: gazebosim/gz-sim gz-sim8 examples/worlds/multicopter_velocity_control.sdf
+
+     Fixed:
+       1. attitudeGain    → Vector3d  "roll pitch yaw"  (was scalar 2.0)
+       2. angularRateGain → Vector3d  "roll pitch yaw"  (was scalar 0.4)
+       3. <rotor> children → <forceConstant> + <momentConstant> + <direction>
+          (was motorConstant / rotorSpinDirection / armLength — do not exist)
+       4. <direction> is an integer: +1 = CCW, -1 = CW
+          (was rotorSpinDirection string "ccw"/"cw" — wrong tag entirely)
+═══════════════════════════════════════════════════════════════════ -->
+    <plugin
+      filename="gz-sim-multicopter-control-system"
+      name="gz::sim::systems::MulticopterVelocityControl">
+
+      <robotNamespace>x3</robotNamespace>
+      <commandSubTopic>cmd_vel</commandSubTopic>
+      <enableSubTopic>enable</enableSubTopic>
+      <comLinkName>base_link</comLinkName>
+
+      <!-- All three gain elements MUST be Vector3d (three space-separated values) -->
+      <velocityGain>2.7 2.7 2.7</velocityGain>
+      <attitudeGain>2.0 3.0 0.15</attitudeGain>
+      <angularRateGain>0.4 0.52 0.18</angularRateGain>
+
+      <maximumLinearAcceleration>2 2 2</maximumLinearAcceleration>
+      <maximumLinearVelocity>5 5 5</maximumLinearVelocity>
+      <maximumAngularVelocity>3 3 3</maximumAngularVelocity>
+
+      <!-- Noise (set to zero for deterministic sim; keep tags present) -->
+      <linearVelocityNoiseMean>0 0 0</linearVelocityNoiseMean>
+      <linearVelocityNoiseStdDev>0 0 0</linearVelocityNoiseStdDev>
+      <angularVelocityNoiseMean>0 0 0</angularVelocityNoiseMean>
+      <angularVelocityNoiseStdDev>0 0 0</angularVelocityNoiseStdDev>
+
+      <!--
+        rotorConfiguration: ONLY these three child elements are valid per <rotor>:
+          <jointName>     — must match the revolute joint name exactly
+          <forceConstant> — thrust = forceConstant * omega^2  (NOT motorConstant)
+          <momentConstant>— torque = momentConstant * thrust
+          <direction>     — integer: +1 = CCW, -1 = CW  (NOT rotorSpinDirection)
+      -->
+      <rotorConfiguration>
+
+        <rotor>
+          <jointName>rotor_0_joint</jointName>   <!-- front-left -->
+          <forceConstant>8.54858e-06</forceConstant>
+          <momentConstant>0.016</momentConstant>
+          <direction>1</direction>               <!-- CCW -->
+        </rotor>
+
+        <rotor>
+          <jointName>rotor_1_joint</jointName>   <!-- back-right -->
+          <forceConstant>8.54858e-06</forceConstant>
+          <momentConstant>0.016</momentConstant>
+          <direction>1</direction>               <!-- CCW -->
+        </rotor>
+
+        <rotor>
+          <jointName>rotor_2_joint</jointName>   <!-- front-right -->
+          <forceConstant>8.54858e-06</forceConstant>
+          <momentConstant>0.016</momentConstant>
+          <direction>-1</direction>              <!-- CW -->
+        </rotor>
+
+        <rotor>
+          <jointName>rotor_3_joint</jointName>   <!-- back-left -->
+          <forceConstant>8.54858e-06</forceConstant>
+          <momentConstant>0.016</momentConstant>
+          <direction>-1</direction>              <!-- CW -->
+        </rotor>
+
+      </rotorConfiguration>
+    </plugin>
+
+    <!-- Odometry (unchanged, just kept here) -->
+    <plugin filename="gz-sim-odometry-publisher-system"
+            name="gz::sim::systems::OdometryPublisher">
+      <robotBaseFrame>base_link</robotBaseFrame>
+      <odomFrame>odom</odomFrame>
+      <odomTopic>odometry</odomTopic>
+      <odomPublishFrequency>50</odomPublishFrequency>
+    </plugin>
+
+  </gazebo>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       DOWN CAMERA LINK + JOINT  (goal detection)
+  ════════════════════════════════════════════════════════════════════ -->
+  <link name="down_camera_link">
+    <inertial>
+      <mass value="0.01"/>
+      <inertia ixx="1e-6" ixy="0" ixz="0"
+               iyy="1e-6" iyz="0"
+               izz="1e-6"/>
+    </inertial>
+    <visual>
+      <geometry><box size="0.03 0.03 0.03"/></geometry>
+      <material name="blue"><color rgba="0.0 0.0 1.0 1.0"/></material>
+    </visual>
+  </link>
+
+  <joint name="down_camera_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="down_camera_link"/>
+    <origin xyz="0.0 0.0 -0.08" rpy="0 1.5708 0"/>
+  </joint>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       FRONT CAMERA SENSOR  (obstacle detection)
+       topic updated: camera/image_raw → /camera/front/image_raw
+  ════════════════════════════════════════════════════════════════════ -->
+  <gazebo reference="camera_link">
+    <sensor name="front_camera" type="camera">
+      <always_on>true</always_on>
+      <update_rate>30</update_rate>
+      <visualize>true</visualize>
+      <topic>/camera/front/image_raw</topic>
+      <camera>
+        <horizontal_fov>1.57</horizontal_fov>
+        <image>
+          <width>640</width>
+          <height>480</height>
+          <format>R8G8B8</format>
+        </image>
+        <clip><near>0.1</near><far>50</far></clip>
+      </camera>
+      <plugin filename="gz-sim-camera-sensor-system"
+              name="gz::sim::systems::CameraSensor"/>
+    </sensor>
+  </gazebo>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       DOWN CAMERA SENSOR  (goal detection)
+  ════════════════════════════════════════════════════════════════════ -->
+  <gazebo reference="down_camera_link">
+    <sensor name="down_camera" type="camera">
+      <always_on>true</always_on>
+      <update_rate>30</update_rate>
+      <visualize>true</visualize>
+      <topic>/camera/down/image_raw</topic>
+      <camera>
+        <horizontal_fov>1.57</horizontal_fov>
+        <image>
+          <width>640</width>
+          <height>480</height>
+          <format>R8G8B8</format>
+        </image>
+        <clip><near>0.05</near><far>20</far></clip>
+      </camera>
+      <plugin filename="gz-sim-camera-sensor-system"
+              name="gz::sim::systems::CameraSensor"/>
+    </sensor>
+  </gazebo>
+
+</robot>

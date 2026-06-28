@@ -1,0 +1,26 @@
+opencv_navigation:
+  ros__parameters:
+    # Altitude hold
+    target_altitude: 2.0
+    altitude_kp: 0.8
+    altitude_deadband: 0.08
+    vertical_speed: 0.50
+
+    # Navigation speeds
+    forward_speed: 0.35
+    lateral_speed: 0.40
+    yaw_speed: 0.35
+
+    # Goal detection
+    goal_min_area: 1500
+    goal_reached_area: 8000
+    goal_center_tolerance: 0.15
+
+    # Obstacle detection
+    obstacle_min_area: 3000
+    zone_left_max: 0.35
+    zone_right_min: 0.65
+
+moving_obstacle:
+  ros__parameters:
+    update_rate_hz: 20.0
