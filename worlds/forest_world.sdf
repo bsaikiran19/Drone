@@ -1,0 +1,559 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <world name="forest_world">
+
+    <!-- ===================================================== -->
+    <!-- Core system plugins (required by Gazebo Harmonic/gz-sim) -->
+    <!-- ===================================================== -->
+    <plugin
+      filename="gz-sim-physics-system"
+      name="gz::sim::systems::Physics">
+    </plugin>
+    <plugin
+      filename="gz-sim-user-commands-system"
+      name="gz::sim::systems::UserCommands">
+    </plugin>
+    <plugin
+      filename="gz-sim-scene-broadcaster-system"
+      name="gz::sim::systems::SceneBroadcaster">
+    </plugin>
+    <plugin
+      filename="gz-sim-sensors-system"
+      name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <!-- Lightweight physics settings -->
+    <physics name="default_physics" type="dart">
+      <max_step_size>0.004</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>250</real_time_update_rate>
+    </physics>
+
+    <!-- ===================================================== -->
+    <!-- Scene / lighting: no shadows, clear sky, minimal cost -->
+    <!-- ===================================================== -->
+    <scene>
+      <ambient>0.7 0.7 0.7 1</ambient>
+      <background>0.72 0.82 0.93 1</background>
+      <shadows>false</shadows>
+      <grid>false</grid>
+      <sky></sky>
+    </scene>
+
+    <light type="directional" name="sun">
+      <cast_shadows>false</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.9 0.9 0.85 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.4 0.2 -0.9</direction>
+      <intensity>1.0</intensity>
+    </light>
+
+    <!-- ===================================================== -->
+    <!-- Flat ground plane -->
+    <!-- ===================================================== -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>60 60</size>
+            </plane>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>0.9</mu>
+                <mu2>0.9</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>60 60</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.28 0.3 0.2 1</ambient>
+            <diffuse>0.36 0.4 0.26 1</diffuse>
+            <specular>0.05 0.05 0.05 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ===================================================== -->
+    <!-- START / GOAL MARKERS                                   -->
+    <!-- Visual-only flat disks (no collision) so they never    -->
+    <!-- interfere with A* / obstacle avoidance.                 -->
+    <!-- ADJUST the two <pose> values below to exactly match     -->
+    <!-- the start/goal used in your existing arena world if     -->
+    <!-- they differ from these defaults (-8 -8 / 8 8).          -->
+    <!-- ===================================================== -->
+    <model name="start_marker">
+      <static>true</static>
+      <pose>-8 -8 0.01 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry>
+            <cylinder>
+              <radius>0.5</radius>
+              <length>0.02</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0 1 0 1</ambient>
+            <diffuse>0 1 0 1</diffuse>
+            <emissive>0 0.3 0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="goal_marker">
+      <static>true</static>
+      <pose>8 8 0.01 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry>
+            <cylinder>
+              <radius>0.5</radius>
+              <length>0.02</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>1 0 0 1</ambient>
+            <diffuse>1 0 0 1</diffuse>
+            <emissive>0.3 0 0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ===================================================== -->
+    <!-- SPARSE FOREST (v3.0.1 -> v3.0.1.1 realism pass)         -->
+    <!-- All obstacles are simple primitives (cylinder trunk +   -->
+    <!-- sphere canopy for trees; ellipsoids for rocks/bushes).  -->
+    <!-- Static, low poly count, no physics-intensive shapes.    -->
+    <!-- Trees are grouped into natural clusters (3 + 2 + 3 + 2  -->
+    <!-- plus 2 isolated singles = 12) instead of an even grid,  -->
+    <!-- with open clearings between clusters. Cluster C sits    -->
+    <!-- on the direct Start->Goal diagonal and blocks it. Three -->
+    <!-- distinct corridors remain: an upper-left route past the-->
+    <!-- isolated tree near (-6, 2), a lower-right route past    -->
+    <!-- the isolated tree near (5, -2), and a middle route      -->
+    <!-- threading the clearings between clusters A/B, C, and D. -->
+    <!-- All gaps are wide enough that no route is ever fully    -->
+    <!-- enclosed, so the drone cannot become trapped.           -->
+    <!-- ===================================================== -->
+
+    <!-- ===================================================== -->
+    <!-- CLUSTER A (3 trees) - lower-left, near Start           -->
+    <!-- ===================================================== -->
+
+    <!-- Tree 1 (Cluster A) -->
+    <model name="tree_1">
+      <static>true</static>
+      <pose>-5.2 -5.3 0 0 0 0.3</pose>
+      <link name="link">
+        <collision name="trunk_collision">
+          <geometry><cylinder><radius>0.13</radius><length>1.6</length></cylinder></geometry>
+          <pose>0 0 0.8 0 0 0</pose>
+        </collision>
+        <visual name="trunk_visual">
+          <geometry><cylinder><radius>0.13</radius><length>1.6</length></cylinder></geometry>
+          <pose>0 0 0.8 0 0 0</pose>
+          <material><ambient>0.36 0.25 0.16 1</ambient><diffuse>0.36 0.25 0.16 1</diffuse></material>
+        </visual>
+        <visual name="canopy_visual">
+          <geometry><sphere><radius>0.85</radius></sphere></geometry>
+          <pose>0 0 2.0 0 0 0</pose>
+          <material><ambient>0.15 0.45 0.15 1</ambient><diffuse>0.15 0.45 0.15 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Tree 2 (Cluster A) -->
+    <model name="tree_2">
+      <static>true</static>
+      <pose>-4.3 -5.8 0 0 0 1.1</pose>
+      <link name="link">
+        <collision name="trunk_collision">
+          <geometry><cylinder><radius>0.16</radius><length>1.9</length></cylinder></geometry>
+          <pose>0 0 0.95 0 0 0</pose>
+        </collision>
+        <visual name="trunk_visual">
+          <geometry><cylinder><radius>0.16</radius><length>1.9</length></cylinder></geometry>
+          <pose>0 0 0.95 0 0 0</pose>
+          <material><ambient>0.36 0.25 0.16 1</ambient><diffuse>0.36 0.25 0.16 1</diffuse></material>
+        </visual>
+        <visual name="canopy_visual">
+          <geometry><sphere><radius>1.05</radius></sphere></geometry>
+          <pose>0 0 2.3 0 0 0</pose>
+          <material><ambient>0.15 0.45 0.15 1</ambient><diffuse>0.15 0.45 0.15 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Tree 3 (Cluster A) -->
+    <model name="tree_3">
+      <static>true</static>
+      <pose>-5.8 -4.6 0 0 0 2.2</pose>
+      <link name="link">
+        <collision name="trunk_collision">
+          <geometry><cylinder><radius>0.14</radius><length>2.1</length></cylinder></geometry>
+          <pose>0 0 1.05 0 0 0</pose>
+        </collision>
+        <visual name="trunk_visual">
+          <geometry><cylinder><radius>0.14</radius><length>2.1</length></cylinder></geometry>
+          <pose>0 0 1.05 0 0 0</pose>
+          <material><ambient>0.36 0.25 0.16 1</ambient><diffuse>0.36 0.25 0.16 1</diffuse></material>
+        </visual>
+        <visual name="canopy_visual">
+          <geometry><sphere><radius>0.95</radius></sphere></geometry>
+          <pose>0 0 2.5 0 0 0</pose>
+          <material><ambient>0.17 0.48 0.17 1</ambient><diffuse>0.17 0.48 0.17 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ===================================================== -->
+    <!-- Open clearing between Cluster A and Cluster B          -->
+    <!-- ===================================================== -->
+
+    <!-- ===================================================== -->
+    <!-- CLUSTER B (2 trees) - lower-mid                        -->
+    <!-- ===================================================== -->
+
+    <!-- Tree 4 (Cluster B) -->
+    <model name="tree_4">
+      <static>true</static>
+      <pose>-1.3 -3.2 0 0 0 0.7</pose>
+      <link name="link">
+        <collision name="trunk_collision">
+          <geometry><cylinder><radius>0.17</radius><length>1.7</length></cylinder></geometry>
+          <pose>0 0 0.85 0 0 0</pose>
+        </collision>
+        <visual name="trunk_visual">
+          <geometry><cylinder><radius>0.17</radius><length>1.7</length></cylinder></geometry>
+          <pose>0 0 0.85 0 0 0</pose>
+          <material><ambient>0.36 0.25 0.16 1</ambient><diffuse>0.36 0.25 0.16 1</diffuse></material>
+        </visual>
+        <visual name="canopy_visual">
+          <geometry><sphere><radius>1.1</radius></sphere></geometry>
+          <pose>0 0 2.1 0 0 0</pose>
+          <material><ambient>0.16 0.46 0.16 1</ambient><diffuse>0.16 0.46 0.16 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Tree 5 (Cluster B) -->
+    <model name="tree_5">
+      <static>true</static>
+      <pose>-0.2 -4.0 0 0 0 1.8</pose>
+      <link name="link">
+        <collision name="trunk_collision">
+          <geometry><cylinder><radius>0.12</radius><length>2.0</length></cylinder></geometry>
+          <pose>0 0 1.0 0 0 0</pose>
+        </collision>
+        <visual name="trunk_visual">
+          <geometry><cylinder><radius>0.12</radius><length>2.0</length></cylinder></geometry>
+          <pose>0 0 1.0 0 0 0</pose>
+          <material><ambient>0.36 0.25 0.16 1</ambient><diffuse>0.36 0.25 0.16 1</diffuse></material>
+        </visual>
+        <visual name="canopy_visual">
+          <geometry><sphere><radius>0.8</radius></sphere></geometry>
+          <pose>0 0 2.4 0 0 0</pose>
+          <material><ambient>0.15 0.45 0.15 1</ambient><diffuse>0.15 0.45 0.15 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ===================================================== -->
+    <!-- Large clearing before Cluster C                        -->
+    <!-- ===================================================== -->
+
+    <!-- ===================================================== -->
+    <!-- CLUSTER C (3 trees) - center, blocks the direct        -->
+    <!-- Start->Goal diagonal                                   -->
+    <!-- ===================================================== -->
+
+    <!-- Tree 6 (Cluster C) -->
+    <model name="tree_6">
+      <static>true</static>
+      <pose>0.8 1.3 0 0 0 0.4</pose>
+      <link name="link">
+        <collision name="trunk_collision">
+          <geometry><cylinder><radius>0.18</radius><length>1.55</length></cylinder></geometry>
+          <pose>0 0 0.775 0 0 0</pose>
+        </collision>
+        <visual name="trunk_visual">
+          <geometry><cylinder><radius>0.18</radius><length>1.55</length></cylinder></geometry>
+          <pose>0 0 0.775 0 0 0</pose>
+          <material><ambient>0.36 0.25 0.16 1</ambient><diffuse>0.36 0.25 0.16 1</diffuse></material>
+        </visual>
+        <visual name="canopy_visual">
+          <geometry><sphere><radius>1.2</radius></sphere></geometry>
+          <pose>0 0 1.95 0 0 0</pose>
+          <material><ambient>0.15 0.45 0.15 1</ambient><diffuse>0.15 0.45 0.15 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Tree 7 (Cluster C) -->
+    <model name="tree_7">
+      <static>true</static>
+      <pose>1.6 0.4 0 0 0 1.5</pose>
+      <link name="link">
+        <collision name="trunk_collision">
+          <geometry><cylinder><radius>0.15</radius><length>1.85</length></cylinder></geometry>
+          <pose>0 0 0.925 0 0 0</pose>
+        </collision>
+        <visual name="trunk_visual">
+          <geometry><cylinder><radius>0.15</radius><length>1.85</length></cylinder></geometry>
+          <pose>0 0 0.925 0 0 0</pose>
+          <material><ambient>0.36 0.25 0.16 1</ambient><diffuse>0.36 0.25 0.16 1</diffuse></material>
+        </visual>
+        <visual name="canopy_visual">
+          <geometry><sphere><radius>0.9</radius></sphere></geometry>
+          <pose>0 0 2.25 0 0 0</pose>
+          <material><ambient>0.16 0.46 0.16 1</ambient><diffuse>0.16 0.46 0.16 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Tree 8 (Cluster C) -->
+    <model name="tree_8">
+      <static>true</static>
+      <pose>0.2 0.2 0 0 0 2.6</pose>
+      <link name="link">
+        <collision name="trunk_collision">
+          <geometry><cylinder><radius>0.13</radius><length>2.2</length></cylinder></geometry>
+          <pose>0 0 1.1 0 0 0</pose>
+        </collision>
+        <visual name="trunk_visual">
+          <geometry><cylinder><radius>0.13</radius><length>2.2</length></cylinder></geometry>
+          <pose>0 0 1.1 0 0 0</pose>
+          <material><ambient>0.36 0.25 0.16 1</ambient><diffuse>0.36 0.25 0.16 1</diffuse></material>
+        </visual>
+        <visual name="canopy_visual">
+          <geometry><sphere><radius>1.0</radius></sphere></geometry>
+          <pose>0 0 2.6 0 0 0</pose>
+          <material><ambient>0.17 0.47 0.17 1</ambient><diffuse>0.17 0.47 0.17 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ===================================================== -->
+    <!-- Clearing between Cluster C and Cluster D                -->
+    <!-- ===================================================== -->
+
+    <!-- ===================================================== -->
+    <!-- CLUSTER D (2 trees) - upper-mid                        -->
+    <!-- ===================================================== -->
+
+    <!-- Tree 9 (Cluster D) -->
+    <model name="tree_9">
+      <static>true</static>
+      <pose>2.8 5.4 0 0 0 0.9</pose>
+      <link name="link">
+        <collision name="trunk_collision">
+          <geometry><cylinder><radius>0.16</radius><length>1.65</length></cylinder></geometry>
+          <pose>0 0 0.825 0 0 0</pose>
+        </collision>
+        <visual name="trunk_visual">
+          <geometry><cylinder><radius>0.16</radius><length>1.65</length></cylinder></geometry>
+          <pose>0 0 0.825 0 0 0</pose>
+          <material><ambient>0.36 0.25 0.16 1</ambient><diffuse>0.36 0.25 0.16 1</diffuse></material>
+        </visual>
+        <visual name="canopy_visual">
+          <geometry><sphere><radius>1.05</radius></sphere></geometry>
+          <pose>0 0 2.05 0 0 0</pose>
+          <material><ambient>0.16 0.46 0.16 1</ambient><diffuse>0.16 0.46 0.16 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Tree 10 (Cluster D) -->
+    <model name="tree_10">
+      <static>true</static>
+      <pose>3.6 4.6 0 0 0 2.0</pose>
+      <link name="link">
+        <collision name="trunk_collision">
+          <geometry><cylinder><radius>0.14</radius><length>1.95</length></cylinder></geometry>
+          <pose>0 0 0.975 0 0 0</pose>
+        </collision>
+        <visual name="trunk_visual">
+          <geometry><cylinder><radius>0.14</radius><length>1.95</length></cylinder></geometry>
+          <pose>0 0 0.975 0 0 0</pose>
+          <material><ambient>0.36 0.25 0.16 1</ambient><diffuse>0.36 0.25 0.16 1</diffuse></material>
+        </visual>
+        <visual name="canopy_visual">
+          <geometry><sphere><radius>0.85</radius></sphere></geometry>
+          <pose>0 0 2.35 0 0 0</pose>
+          <material><ambient>0.15 0.45 0.15 1</ambient><diffuse>0.15 0.45 0.15 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ===================================================== -->
+    <!-- Isolated single trees (each its own small clearing)    -->
+    <!-- ===================================================== -->
+
+    <!-- Tree 11 (isolated, upper-left - anchors the left corridor) -->
+    <model name="tree_11">
+      <static>true</static>
+      <pose>-6 2 0 0 0 1.3</pose>
+      <link name="link">
+        <collision name="trunk_collision">
+          <geometry><cylinder><radius>0.17</radius><length>1.75</length></cylinder></geometry>
+          <pose>0 0 0.875 0 0 0</pose>
+        </collision>
+        <visual name="trunk_visual">
+          <geometry><cylinder><radius>0.17</radius><length>1.75</length></cylinder></geometry>
+          <pose>0 0 0.875 0 0 0</pose>
+          <material><ambient>0.36 0.25 0.16 1</ambient><diffuse>0.36 0.25 0.16 1</diffuse></material>
+        </visual>
+        <visual name="canopy_visual">
+          <geometry><sphere><radius>1.15</radius></sphere></geometry>
+          <pose>0 0 2.15 0 0 0</pose>
+          <material><ambient>0.17 0.47 0.17 1</ambient><diffuse>0.17 0.47 0.17 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Tree 12 (isolated, lower-right - anchors the right corridor) -->
+    <model name="tree_12">
+      <static>true</static>
+      <pose>5 -2 0 0 0 2.9</pose>
+      <link name="link">
+        <collision name="trunk_collision">
+          <geometry><cylinder><radius>0.12</radius><length>2.15</length></cylinder></geometry>
+          <pose>0 0 1.075 0 0 0</pose>
+        </collision>
+        <visual name="trunk_visual">
+          <geometry><cylinder><radius>0.12</radius><length>2.15</length></cylinder></geometry>
+          <pose>0 0 1.075 0 0 0</pose>
+          <material><ambient>0.36 0.25 0.16 1</ambient><diffuse>0.36 0.25 0.16 1</diffuse></material>
+        </visual>
+        <visual name="canopy_visual">
+          <geometry><sphere><radius>0.8</radius></sphere></geometry>
+          <pose>0 0 2.55 0 0 0</pose>
+          <material><ambient>0.16 0.46 0.16 1</ambient><diffuse>0.16 0.46 0.16 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ===================================================== -->
+    <!-- Rocks: placed beside tree clusters instead of scattered -->
+    <!-- ===================================================== -->
+    <model name="rock_1">
+      <static>true</static>
+      <pose>-4.5 -4.5 0.25 0.2 0.1 0.5</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><ellipsoid><radii_of_curvature>0.5 0.4 0.3</radii_of_curvature></ellipsoid></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><ellipsoid><radii_of_curvature>0.5 0.4 0.3</radii_of_curvature></ellipsoid></geometry>
+          <material><ambient>0.5 0.5 0.5 1</ambient><diffuse>0.5 0.5 0.5 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="rock_2">
+      <static>true</static>
+      <pose>0.5 -3.5 0.2 0.1 0.3 1.1</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><ellipsoid><radii_of_curvature>0.4 0.35 0.25</radii_of_curvature></ellipsoid></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><ellipsoid><radii_of_curvature>0.4 0.35 0.25</radii_of_curvature></ellipsoid></geometry>
+          <material><ambient>0.52 0.52 0.5 1</ambient><diffuse>0.52 0.52 0.5 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="rock_3">
+      <static>true</static>
+      <pose>1.8 1.6 0.22 0.3 0.0 2.0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><ellipsoid><radii_of_curvature>0.45 0.4 0.28</radii_of_curvature></ellipsoid></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><ellipsoid><radii_of_curvature>0.45 0.4 0.28</radii_of_curvature></ellipsoid></geometry>
+          <material><ambient>0.48 0.48 0.46 1</ambient><diffuse>0.48 0.48 0.46 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="rock_4">
+      <static>true</static>
+      <pose>3.2 5.8 0.2 0.0 0.2 0.7</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><ellipsoid><radii_of_curvature>0.4 0.3 0.25</radii_of_curvature></ellipsoid></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><ellipsoid><radii_of_curvature>0.4 0.3 0.25</radii_of_curvature></ellipsoid></geometry>
+          <material><ambient>0.5 0.5 0.48 1</ambient><diffuse>0.5 0.5 0.48 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ===================================================== -->
+    <!-- Bushes: placed beside a tree trunk in each cluster      -->
+    <!-- instead of standing alone                              -->
+    <!-- ===================================================== -->
+    <model name="bush_1">
+      <static>true</static>
+      <pose>-5.5 -5.0 0.35 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><sphere><radius>0.35</radius></sphere></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><sphere><radius>0.35</radius></sphere></geometry>
+          <material><ambient>0.12 0.4 0.12 1</ambient><diffuse>0.12 0.4 0.12 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="bush_2">
+      <static>true</static>
+      <pose>1.9 0.7 0.3 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><sphere><radius>0.3</radius></sphere></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><sphere><radius>0.3</radius></sphere></geometry>
+          <material><ambient>0.14 0.42 0.14 1</ambient><diffuse>0.14 0.42 0.14 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="bush_3">
+      <static>true</static>
+      <pose>2.6 5.5 0.32 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><sphere><radius>0.32</radius></sphere></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><sphere><radius>0.32</radius></sphere></geometry>
+          <material><ambient>0.13 0.41 0.13 1</ambient><diffuse>0.13 0.41 0.13 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>
