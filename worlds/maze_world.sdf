@@ -1,0 +1,330 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <world name="maze_world">
+
+    <!-- Core system plugins (required by Gazebo Harmonic/gz-sim) -->
+    <plugin
+      filename="gz-sim-physics-system"
+      name="gz::sim::systems::Physics">
+    </plugin>
+    <plugin
+      filename="gz-sim-user-commands-system"
+      name="gz::sim::systems::UserCommands">
+    </plugin>
+    <plugin
+      filename="gz-sim-scene-broadcaster-system"
+      name="gz::sim::systems::SceneBroadcaster">
+    </plugin>
+    <plugin
+      filename="gz-sim-sensors-system"
+      name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <!-- Lightweight physics settings (same as previous worlds) -->
+    <physics name="default_physics" type="dart">
+      <max_step_size>0.004</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>250</real_time_update_rate>
+    </physics>
+
+    <!-- Scene / lighting: identical to Forest World and Warehouse World -->
+    <scene>
+      <ambient>0.7 0.7 0.7 1</ambient>
+      <background>0.72 0.82 0.93 1</background>
+      <shadows>false</shadows>
+      <grid>false</grid>
+      <sky></sky>
+    </scene>
+
+    <light type="directional" name="sun">
+      <cast_shadows>false</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.9 0.9 0.85 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.4 0.2 -0.9</direction>
+      <intensity>1.0</intensity>
+    </light>
+
+    <!-- Flat floor: 60 x 60 m -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>60 60</size>
+            </plane>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>0.9</mu>
+                <mu2>0.9</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>60 60</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.6 0.6 0.6 1</ambient>
+            <diffuse>0.65 0.65 0.65 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- START / GOAL MARKERS: same coordinates and style as previous worlds -->
+    <model name="start_marker">
+      <static>true</static>
+      <pose>-8 -8 0.01 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry>
+            <cylinder>
+              <radius>0.5</radius>
+              <length>0.02</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0 1 0 1</ambient>
+            <diffuse>0 1 0 1</diffuse>
+            <emissive>0 0.3 0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="goal_marker">
+      <static>true</static>
+      <pose>8 8 0.01 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry>
+            <cylinder>
+              <radius>0.5</radius>
+              <length>0.02</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>1 0 0 1</ambient>
+            <diffuse>1 0 0 1</diffuse>
+            <emissive>0.3 0 0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!--
+      MAZE LAYOUT: box wall segments only, no meshes, no Fuel models.
+      Four horizontal wall rows at y = -6, -2, 2, 6 span the play area
+      (x -10..10). Rows 1 and 3 have a single 4 m gap centered on x=0.
+      Rows 2 and 4 each have TWO 4 m gaps (near x=-6 and x=6), which
+      creates junctions: after passing through row 1, the drone can
+      choose the left gap or the right gap through row 2, giving more
+      than one valid route toward the goal. All gaps are 4 m wide,
+      matching the corridor width already used in Forest/Warehouse
+      worlds, to stay clear of the drone's safe navigation width.
+      Every horizontal band between rows is open across its full
+      width, so no route is ever fully enclosed or dead-ended.
+      Five short baffle walls add extra left/right turns inside the
+      open bands (including just past Start and just before Goal)
+      without blocking any route, to make this the most turn-dense
+      path of the three worlds. Total: 15 wall segments (max 20).
+    -->
+
+    <!-- Row 1 (y = -6): single gap centered at x = 0 -->
+    <model name="wall_row1_a">
+      <static>true</static>
+      <pose>-6 -6 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>8 0.4 2</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>8 0.4 2</size></box></geometry>
+          <material><ambient>0.45 0.45 0.5 1</ambient><diffuse>0.45 0.45 0.5 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_row1_b">
+      <static>true</static>
+      <pose>6 -6 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>8 0.4 2</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>8 0.4 2</size></box></geometry>
+          <material><ambient>0.45 0.45 0.5 1</ambient><diffuse>0.45 0.45 0.5 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Row 2 (y = -2): two gaps -> junction, near x=-6 and x=6 -->
+    <model name="wall_row2_a">
+      <static>true</static>
+      <pose>-9 -2 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>2 0.4 2</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>2 0.4 2</size></box></geometry>
+          <material><ambient>0.45 0.45 0.5 1</ambient><diffuse>0.45 0.45 0.5 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_row2_b">
+      <static>true</static>
+      <pose>0 -2 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>8 0.4 2</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>8 0.4 2</size></box></geometry>
+          <material><ambient>0.45 0.45 0.5 1</ambient><diffuse>0.45 0.45 0.5 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_row2_c">
+      <static>true</static>
+      <pose>9 -2 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>2 0.4 2</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>2 0.4 2</size></box></geometry>
+          <material><ambient>0.45 0.45 0.5 1</ambient><diffuse>0.45 0.45 0.5 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Row 3 (y = 2): single gap centered at x = 0 -->
+    <model name="wall_row3_a">
+      <static>true</static>
+      <pose>-6 2 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>8 0.4 2</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>8 0.4 2</size></box></geometry>
+          <material><ambient>0.45 0.45 0.5 1</ambient><diffuse>0.45 0.45 0.5 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_row3_b">
+      <static>true</static>
+      <pose>6 2 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>8 0.4 2</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>8 0.4 2</size></box></geometry>
+          <material><ambient>0.45 0.45 0.5 1</ambient><diffuse>0.45 0.45 0.5 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Row 4 (y = 6): two gaps -> junction, near x=-6 and x=6 -->
+    <model name="wall_row4_a">
+      <static>true</static>
+      <pose>-9 6 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>2 0.4 2</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>2 0.4 2</size></box></geometry>
+          <material><ambient>0.45 0.45 0.5 1</ambient><diffuse>0.45 0.45 0.5 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_row4_b">
+      <static>true</static>
+      <pose>0 6 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>8 0.4 2</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>8 0.4 2</size></box></geometry>
+          <material><ambient>0.45 0.45 0.5 1</ambient><diffuse>0.45 0.45 0.5 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_row4_c">
+      <static>true</static>
+      <pose>9 6 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>2 0.4 2</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>2 0.4 2</size></box></geometry>
+          <material><ambient>0.45 0.45 0.5 1</ambient><diffuse>0.45 0.45 0.5 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Baffles: short walls inside open bands adding extra turns without blocking any route -->
+    <model name="baffle_start">
+      <static>true</static>
+      <pose>-8 -7 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>3 0.4 2</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>3 0.4 2</size></box></geometry>
+          <material><ambient>0.5 0.48 0.4 1</ambient><diffuse>0.5 0.48 0.4 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="baffle_band1">
+      <static>true</static>
+      <pose>3 -4 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>4 0.4 2</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>4 0.4 2</size></box></geometry>
+          <material><ambient>0.5 0.48 0.4 1</ambient><diffuse>0.5 0.48 0.4 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="baffle_band2">
+      <static>true</static>
+      <pose>-3 0 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>4 0.4 2</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>4 0.4 2</size></box></geometry>
+          <material><ambient>0.5 0.48 0.4 1</ambient><diffuse>0.5 0.48 0.4 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="baffle_band3">
+      <static>true</static>
+      <pose>3 4 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>4 0.4 2</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>4 0.4 2</size></box></geometry>
+          <material><ambient>0.5 0.48 0.4 1</ambient><diffuse>0.5 0.48 0.4 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="baffle_goal">
+      <static>true</static>
+      <pose>8 7 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>3 0.4 2</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>3 0.4 2</size></box></geometry>
+          <material><ambient>0.5 0.48 0.4 1</ambient><diffuse>0.5 0.48 0.4 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>

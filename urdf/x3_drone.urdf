@@ -381,8 +381,8 @@
         </image>
         <clip><near>0.1</near><far>50</far></clip>
       </camera>
-      <plugin filename="gz-sim-camera-sensor-system"
-              name="gz::sim::systems::CameraSensor"/>
+      <!-- <plugin filename="gz-sim-camera-sensor-system"
+              name="gz::sim::systems::CameraSensor"/> -->
     </sensor>
   </gazebo>
 

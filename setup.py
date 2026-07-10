@@ -32,7 +32,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'opencv_navigation = opencv_drone_vision.opencv_navigation:main',
+            'opencv_navigation_v4 = opencv_drone_vision.opencv_navigation_v4:main',
             'moving_obstacle = opencv_drone_vision.moving_obstacle:main',
         ],
     },

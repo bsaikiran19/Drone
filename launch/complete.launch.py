@@ -128,8 +128,8 @@ def generate_launch_description():
         actions=[
             Node(
                 package=PKG,
-                executable="opencv_navigation_v2",
-                name="opencv_navigation_v2",
+                executable="opencv_navigation_v4",
+                name="opencv_navigation_v4",
                 parameters=[
                     {
                         "use_sim_time": use_sim_time,
