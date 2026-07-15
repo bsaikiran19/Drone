@@ -1,0 +1,444 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <world name="benchmark_world">
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         PHYSICS — unchanged from V4, proven stable on WSL2
+         ═══════════════════════════════════════════════════════════════ -->
+    <physics name="default_physics" type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
+    </physics>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         PLUGINS
+         ═══════════════════════════════════════════════════════════════ -->
+    <plugin filename="gz-sim-physics-system"
+            name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system"
+            name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system"
+            name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system"
+            name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system"
+            name="gz::sim::systems::Imu"/>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         LIGHTING
+         ═══════════════════════════════════════════════════════════════ -->
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.9 0.9 0.9 1</diffuse>
+      <specular>0.3 0.3 0.3 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         GROUND PLANE — 22 x 10 m, sized to the arena with margin
+         ═══════════════════════════════════════════════════════════════ -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>22 10</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>22 10</size></plane></geometry>
+          <material>
+            <ambient>0.6 0.6 0.6 1</ambient>
+            <diffuse>0.6 0.6 0.6 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         START / GOAL MARKERS (visual only, no collision)
+         Start: (0, 0, 0.2)      Goal: (19, 0, 2.0)
+         ═══════════════════════════════════════════════════════════════ -->
+    <model name="start_marker">
+      <static>true</static>
+      <pose>0 0 0.01 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry><cylinder><radius>0.5</radius><length>0.02</length></cylinder></geometry>
+          <material>
+            <ambient>0 0.8 0 1</ambient>
+            <diffuse>0 1 0 1</diffuse>
+            <emissive>0 0.5 0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="goal_marker">
+      <static>true</static>
+      <pose>19 0 0.01 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry><cylinder><radius>0.5</radius><length>0.02</length></cylinder></geometry>
+          <material>
+            <ambient>0.9 0 0 1</ambient>
+            <diffuse>1 0 0 1</diffuse>
+            <emissive>0.5 0 0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Goal altitude marker — a thin vertical pole at the goal XY so the
+         drone (and a human watching) can see the target height (z=2.0),
+         not just the ground footprint. Visual only. -->
+    <model name="goal_altitude_marker">
+      <static>true</static>
+      <pose>19 0 1.0 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry><cylinder><radius>0.02</radius><length>2.0</length></cylinder></geometry>
+          <material>
+            <ambient>1 0.3 0.3 0.5</ambient>
+            <diffuse>1 0.3 0.3 0.5</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         OBSTACLE FIELD — no zones, continuous mix from x≈3 to x≈17.
+         Density gradient: sparse buffer (0-3m) → mixed field (3-17m) →
+         sparse approach (17-19m). Types are interleaved by X position,
+         not grouped. Total: 21 obstacles (8 SG + 4 DG + 6 SE + 3 DE).
+
+         Dynamic obstacles use <kinematic>true</kinematic> and disabled
+         gravity on their link, so they can be pose-driven externally
+         (by the redesigned moving_obstacle.py, via direct gz-transport
+         publish — no subprocess spawning) without physics fighting the
+         scripted motion or elevated obstacles falling between updates.
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ─────────────── STATIC GROUND OBSTACLES (8) ─────────────── -->
+
+    <model name="static_ground_1">
+      <static>true</static>
+      <pose>3.5 1.2 0.45 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.6 0.6 0.9</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.6 0.6 0.9</size></box></geometry>
+          <material><ambient>0.5 0.35 0.2 1</ambient><diffuse>0.6 0.4 0.25 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="static_ground_2">
+      <static>true</static>
+      <pose>4.5 -2.0 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><cylinder><radius>0.4</radius><length>1.0</length></cylinder></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.4</radius><length>1.0</length></cylinder></geometry>
+          <material><ambient>0.4 0.4 0.45 1</ambient><diffuse>0.5 0.5 0.55 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="static_ground_3">
+      <static>true</static>
+      <pose>6.0 2.5 0.35 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.5 0.8 0.7</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.5 0.8 0.7</size></box></geometry>
+          <material><ambient>0.5 0.35 0.2 1</ambient><diffuse>0.6 0.4 0.25 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="static_ground_4">
+      <static>true</static>
+      <pose>7.5 -1.0 0.55 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><cylinder><radius>0.35</radius><length>1.1</length></cylinder></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.35</radius><length>1.1</length></cylinder></geometry>
+          <material><ambient>0.4 0.4 0.45 1</ambient><diffuse>0.5 0.5 0.55 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="static_ground_5">
+      <static>true</static>
+      <pose>9.5 0.5 0.4 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.7 0.5 0.8</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.7 0.5 0.8</size></box></geometry>
+          <material><ambient>0.5 0.35 0.2 1</ambient><diffuse>0.6 0.4 0.25 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="static_ground_6">
+      <static>true</static>
+      <pose>11.5 -2.8 0.45 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><cylinder><radius>0.4</radius><length>0.9</length></cylinder></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.4</radius><length>0.9</length></cylinder></geometry>
+          <material><ambient>0.4 0.4 0.45 1</ambient><diffuse>0.5 0.5 0.55 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="static_ground_7">
+      <static>true</static>
+      <pose>13.5 1.8 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.6 0.6 1.0</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.6 0.6 1.0</size></box></geometry>
+          <material><ambient>0.5 0.35 0.2 1</ambient><diffuse>0.6 0.4 0.25 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="static_ground_8">
+      <static>true</static>
+      <pose>15.5 -0.8 0.425 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><cylinder><radius>0.4</radius><length>0.85</length></cylinder></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.4</radius><length>0.85</length></cylinder></geometry>
+          <material><ambient>0.4 0.4 0.45 1</ambient><diffuse>0.5 0.5 0.55 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ─────────────── DYNAMIC GROUND OBSTACLES (4) ───────────────
+         Kinematic, gravity disabled. Base pose given below; external
+         node will oscillate each one along Y (sinusoidal, own phase
+         and period per object — see design notes in chat). -->
+
+    <model name="dynamic_ground_1">
+      <pose>5.0 0.0 0.4 0 0 0</pose>
+      <link name="link">
+        <kinematic>true</kinematic>
+        <gravity>false</gravity>
+        <collision name="collision">
+          <geometry><box><size>0.5 0.5 0.8</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.5 0.5 0.8</size></box></geometry>
+          <material><ambient>0.75 0.55 0.1 1</ambient><diffuse>0.9 0.65 0.15 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="dynamic_ground_2">
+      <pose>8.5 -0.3 0.45 0 0 0</pose>
+      <link name="link">
+        <kinematic>true</kinematic>
+        <gravity>false</gravity>
+        <collision name="collision">
+          <geometry><cylinder><radius>0.35</radius><length>0.9</length></cylinder></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.35</radius><length>0.9</length></cylinder></geometry>
+          <material><ambient>0.75 0.55 0.1 1</ambient><diffuse>0.9 0.65 0.15 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="dynamic_ground_3">
+      <pose>12.0 0.5 0.35 0 0 0</pose>
+      <link name="link">
+        <kinematic>true</kinematic>
+        <gravity>false</gravity>
+        <collision name="collision">
+          <geometry><box><size>0.5 0.5 0.7</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.5 0.5 0.7</size></box></geometry>
+          <material><ambient>0.75 0.55 0.1 1</ambient><diffuse>0.9 0.65 0.15 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="dynamic_ground_4">
+      <pose>16.0 0.0 0.4 0 0 0</pose>
+      <link name="link">
+        <kinematic>true</kinematic>
+        <gravity>false</gravity>
+        <collision name="collision">
+          <geometry><cylinder><radius>0.4</radius><length>0.8</length></cylinder></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.4</radius><length>0.8</length></cylinder></geometry>
+          <material><ambient>0.75 0.55 0.1 1</ambient><diffuse>0.9 0.65 0.15 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ─────────────── STATIC ELEVATED OBSTACLES (6) ───────────────
+         Suspended at 1.8-2.6m (drone cruise band). Several sit above
+         open ground space so "clear at ground level" ≠ "clear at
+         altitude" — this is what forces genuine Z decisions. -->
+
+    <model name="static_elevated_1">
+      <static>true</static>
+      <pose>4.0 -0.5 2.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.8 0.8 0.4</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.8 0.8 0.4</size></box></geometry>
+          <material><ambient>0.2 0.3 0.55 1</ambient><diffuse>0.25 0.4 0.7 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="static_elevated_2">
+      <static>true</static>
+      <pose>6.5 1.0 2.2 0 1.5708 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><cylinder><radius>0.15</radius><length>1.2</length></cylinder></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.15</radius><length>1.2</length></cylinder></geometry>
+          <material><ambient>0.2 0.3 0.55 1</ambient><diffuse>0.25 0.4 0.7 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="static_elevated_3">
+      <static>true</static>
+      <pose>9.0 -1.8 2.4 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>1.0 0.4 0.4</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>1.0 0.4 0.4</size></box></geometry>
+          <material><ambient>0.2 0.3 0.55 1</ambient><diffuse>0.25 0.4 0.7 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="static_elevated_4">
+      <static>true</static>
+      <pose>11.0 1.5 2.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.7 0.7 0.4</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.7 0.7 0.4</size></box></geometry>
+          <material><ambient>0.2 0.3 0.55 1</ambient><diffuse>0.25 0.4 0.7 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="static_elevated_5">
+      <static>true</static>
+      <pose>14.0 -0.5 2.3 0 1.5708 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><cylinder><radius>0.15</radius><length>1.0</length></cylinder></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.15</radius><length>1.0</length></cylinder></geometry>
+          <material><ambient>0.2 0.3 0.55 1</ambient><diffuse>0.25 0.4 0.7 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="static_elevated_6">
+      <static>true</static>
+      <pose>16.5 1.2 2.1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.8 0.5 0.4</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.8 0.5 0.4</size></box></geometry>
+          <material><ambient>0.2 0.3 0.55 1</ambient><diffuse>0.25 0.4 0.7 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ─────────────── DYNAMIC ELEVATED OBSTACLES (3) ───────────────
+         Kinematic, gravity disabled, base pose at cruise altitude.
+         External node scripts vertical bob or lateral Y drift, own
+         phase/period per object — the hardest avoidance case, since
+         the drone must anticipate where the gap will be. -->
+
+    <model name="dynamic_elevated_1">
+      <pose>7.0 0.0 2.0 0 0 0</pose>
+      <link name="link">
+        <kinematic>true</kinematic>
+        <gravity>false</gravity>
+        <collision name="collision">
+          <geometry><sphere><radius>0.3</radius></sphere></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><sphere><radius>0.3</radius></sphere></geometry>
+          <material><ambient>0.6 0.15 0.15 1</ambient><diffuse>0.8 0.2 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="dynamic_elevated_2">
+      <pose>10.5 -0.5 2.2 0 0 0</pose>
+      <link name="link">
+        <kinematic>true</kinematic>
+        <gravity>false</gravity>
+        <collision name="collision">
+          <geometry><box><size>0.5 0.5 0.5</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.5 0.5 0.5</size></box></geometry>
+          <material><ambient>0.6 0.15 0.15 1</ambient><diffuse>0.8 0.2 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="dynamic_elevated_3">
+      <pose>15.0 0.3 1.9 0 0 0</pose>
+      <link name="link">
+        <kinematic>true</kinematic>
+        <gravity>false</gravity>
+        <collision name="collision">
+          <geometry><sphere><radius>0.35</radius></sphere></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><sphere><radius>0.35</radius></sphere></geometry>
+          <material><ambient>0.6 0.15 0.15 1</ambient><diffuse>0.8 0.2 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>

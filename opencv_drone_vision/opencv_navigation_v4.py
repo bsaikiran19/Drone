@@ -53,6 +53,10 @@ from ultralytics import YOLO
 # NavigationCore is now the only source of navigation decisions.
 from .navigation_core import NavigationCore
 
+# Experiment-logging only. Read-only observer — see mission_logger.py for
+# the non-invasiveness contract. Not part of the navigation architecture.
+from .mission_logger import MissionLogger
+
 
 # =============================================================================
 # CONFIGURATION
@@ -372,6 +376,31 @@ class DroneNavigator(Node):
         )
         self.nav_core.set_goal(NAV_GOAL_X, NAV_GOAL_Y, NAV_GOAL_Z)
 
+        # ── Experiment-logging instrumentation (read-only mirrors) ───────────
+        # These attributes exist ONLY so MissionLogger can read them; nothing
+        # in control_loop(), _yolo_inference_loop(), or NavigationCore reads
+        # FROM them. They mirror values that are already computed/published
+        # elsewhere in this class — no new navigation math is introduced.
+        #   _log_linear_x/y/z, _log_angular_z: a copy of the Twist most
+        #     recently published to /drone/cmd_vel (mirrored right after each
+        #     existing self.cmd_pub.publish(cmd) call in control_loop()).
+        #   last_inference_time_ms, last_inference_fps: wall-clock timing of
+        #     the existing self.yolo_model.track() call in
+        #     _yolo_inference_loop(), left as None until the first inference
+        #     tick actually runs so the logger can log a blank/NA value
+        #     rather than a fabricated 0.0 before YOLO has run at all.
+        self._log_linear_x  = 0.0
+        self._log_linear_y  = 0.0
+        self._log_linear_z  = 0.0
+        self._log_angular_z = 0.0
+        self.last_inference_time_ms = None
+        self.last_inference_fps     = None
+
+        # Experiment-logging CSV writer (see mission_logger.py). Read-only
+        # observer of this node's state; called explicitly from
+        # control_loop() below — no new timer is created for it.
+        self.mission_logger = MissionLogger(self)
+
         # ── Timers ────────────────────────────────────────────────────────────
         # Control loop at 20 Hz — flight behaviour is untouched by YOLO.
         self.create_timer(0.05, self.control_loop)
@@ -665,6 +694,11 @@ class DroneNavigator(Node):
 
         frame = self.latest_front_frame
 
+        # Experiment logging only — wall-clock timing around the existing
+        # .track() call below. Does not change what is passed in, which
+        # tracker is used, the fallback logic, or what is returned.
+        _inference_t0 = time.perf_counter()
+
         try:
             results = self.yolo_model.track(
                 frame,
@@ -690,6 +724,13 @@ class DroneNavigator(Node):
             else:
                 self.get_logger().error(f'YOLOv8 tracking error: {e}')
                 return
+
+        # Experiment logging only — inference time in ms and the
+        # instantaneous FPS that duration implies. Computed once the
+        # .track() call above has actually returned.
+        _inference_dt = time.perf_counter() - _inference_t0
+        self.last_inference_time_ms = _inference_dt * 1000.0
+        self.last_inference_fps = (1.0 / _inference_dt) if _inference_dt > 0 else 0.0
 
         yolo_debug = frame.copy()
         detections = []
@@ -1153,6 +1194,11 @@ class DroneNavigator(Node):
             # Hover behaviour: goal reached — publish zero velocity and keep
             # spinning normally. Never transitions into landing behaviour.
             self.cmd_pub.publish(Twist())
+            # Experiment logging only — mirrors the zero-velocity Twist that
+            # was just published; does not alter hover behaviour.
+            self._log_linear_x = self._log_linear_y = self._log_linear_z = 0.0
+            self._log_angular_z = 0.0
+            self.mission_logger.log()
             return
 
         # Timer-based takeoff — 60 ticks at 20 Hz = 3 seconds. Once complete,
@@ -1167,6 +1213,11 @@ class DroneNavigator(Node):
                 enable_msg.data = True
                 self.enable_pub.publish(enable_msg)
             self.cmd_pub.publish(cmd)
+            # Experiment logging only — mirrors the Twist just published
+            # (takeoff phase: linear.z = VERT_SPEED, everything else 0).
+            self._log_linear_x, self._log_linear_y = cmd.linear.x, cmd.linear.y
+            self._log_linear_z, self._log_angular_z = cmd.linear.z, cmd.angular.z
+            self.mission_logger.log()
             return
 
         # ── NavigationCore drives every remaining tick ──────────────────────
@@ -1184,6 +1235,11 @@ class DroneNavigator(Node):
         cmd.linear.z  = command.linear_z
         cmd.angular.z = command.angular_z
         self.cmd_pub.publish(cmd)
+        # Experiment logging only — mirrors the Twist just published by
+        # NavigationCore's command; does not feed back into NavigationCore
+        # or change what was just published.
+        self._log_linear_x, self._log_linear_y = cmd.linear.x, cmd.linear.y
+        self._log_linear_z, self._log_angular_z = cmd.linear.z, cmd.angular.z
 
         if command.goal_reached:
             self.state = STATE_MISSION_DONE
@@ -1193,6 +1249,11 @@ class DroneNavigator(Node):
                 self.get_logger().info('GOAL REACHED — HOVERING')
                 self.get_logger().info('===================================')
                 self.mission_complete_logged = True
+
+        # Experiment logging only — placed after the goal_reached state
+        # update above (not before) so Mission_Status/Goal_Reached in this
+        # row already reflect the flip on the exact tick it happens.
+        self.mission_logger.log()
 
 
 # =============================================================================
